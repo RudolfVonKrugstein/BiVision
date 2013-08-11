@@ -75,7 +75,7 @@ void MainFrame::GotoEndOfFirstLine( wxCommandEvent& event ) {
         return;
     }
     // Get the correct line
-    for (y; y > 1; --y) {
+    for (y; y > 0; --y) {
         if (lines[y].Find('=') != wxNOT_FOUND) {
             break;
         }
