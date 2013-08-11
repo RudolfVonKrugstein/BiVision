@@ -8,8 +8,8 @@ public:
 
 protected:
     void ensureTextValidity(wxCommandEvent &event);
-    virtual void OnQuit( wxCommandEvent& event );
-    virtual void GotoEndOfFirstLine( wxCommandEvent& event );
-    virtual void FocusBuffer( wxCommandEvent& event );
-    virtual void FocusMainTextArea( wxCommandEvent& event );
+    virtual void OnQuit( wxCommandEvent& event ) override;
+    virtual void GotoEndOfFirstLine( wxCommandEvent& event ) override;
+    virtual void FocusBuffer( wxCommandEvent& event ) override;
+    virtual void FocusMainTextArea( wxCommandEvent& event ) override;
 };
