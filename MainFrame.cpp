@@ -17,14 +17,18 @@ size_t lastNonSpaceCharacterPos(wxString f_str) {
     return f_str.length();
 }
 
-
-void MainFrame::GotoEndOfFirstLine( wxCommandEvent& event ) {
-    //Store cursor
-    long x,y;
-    m_mainText->PositionToXY(m_mainText->GetInsertionPoint(), &x, &y);
-    if (x > 40) {
-        x = 40;
+bool isEmptyLine(const wxString& fcr_str) {
+    for (wxChar c : fcr_str) {
+        if (c != ' ') {
+            return false;
+        }
     }
+    return true;
+}
+
+
+std::vector<wxString> MainFrame::getMainAreaLines()
+{
     wxString val = m_mainText->GetValue();
 
     // Split into lines
@@ -34,6 +38,39 @@ void MainFrame::GotoEndOfFirstLine( wxCommandEvent& event ) {
     {
         lines.push_back(tkz.GetNextToken());
     }
+
+    return lines;
+}
+
+void MainFrame::GotoEndOfDocument(wxCommandEvent &event) {
+    std::vector<wxString> lines = getMainAreaLines();
+    if (lines.empty()) {
+        return;
+    }
+    // Find last line which is not empty
+    long y;
+    for (y = lines.size()-1; y > 0; --y) {
+        if (!isEmptyLine(lines[y])) {
+            break;
+        }
+    }
+    // Found something?
+    if (y < 0) {
+        return;
+    }
+    // Get correct positio in this line
+    long x = lastNonSpaceCharacterPos(lines[y]);
+    m_mainText->SetInsertionPoint(m_mainText->XYToPosition(x,y));
+}
+
+void MainFrame::GotoEndOfFirstLine( wxCommandEvent& event ) {
+    //Store cursor
+    long x,y;
+    m_mainText->PositionToXY(m_mainText->GetInsertionPoint(), &x, &y);
+    if (x > 40) {
+        x = 40;
+    }
+    std::vector<wxString> lines = getMainAreaLines();
     if (lines.empty()) {
         return;
     }
@@ -54,15 +91,6 @@ void MainFrame::FocusBuffer( wxCommandEvent& event ) {
 
 void MainFrame::FocusMainTextArea( wxCommandEvent& event ) {
     m_mainText->SetFocus();
-}
-
-bool isEmptyLine(const wxString& fcr_str) {
-    for (wxChar c : fcr_str) {
-        if (c != ' ') {
-            return false;
-        }
-    }
-    return true;
 }
 
 void MainFrame::ensureTextValidity(wxCommandEvent &event) {
