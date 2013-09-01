@@ -140,7 +140,7 @@ dealWithUnsavedChanges :: Var ProgramState -> Frame a -> TextCtrl a -> IO Bool
 dealWithUnsavedChanges state f tc = do
   uc <- unsavedChanges <$> varGet state
   if not uc then return True else do
-    res <- messageDialog f "Unsaved changes ..." "You have unsaved changes, do you want to save them?" (wxYES_NO .+. wxCANCEL .+. wxICON_EXCLAMATION)
+    res <- messageDialog f (r UnsavedChanges) (r WantToSaveUnsavedChanges) (wxYES_NO .+. wxCANCEL .+. wxICON_EXCLAMATION)
     case res of
       _ | res == wxID_CANCEL -> return False
         | res == wxID_NO     -> return True
@@ -171,7 +171,7 @@ openFile tc f fp = do
 onSaveAs :: Var ProgramState -> Frame a -> TextCtrl a -> IO ()
 onSaveAs state f tc = do
   filePath <- fileName <$> varGet state
-  fp <- fileSaveDialog f True True "Select a file to save into ..." [("Text file",["*.txt"])] (dropFileName filePath) (takeFileName filePath)
+  fp <- fileSaveDialog f True True (r SelectFileForSave) [("Text file",["*.txt"])] (dropFileName filePath) (takeFileName filePath)
   case fp of
     Nothing -> return ()
     Just newFp -> do
@@ -194,7 +194,7 @@ onOpen state f tc = do
   realyOpen <- dealWithUnsavedChanges state f tc
   filePath <- fileName <$> varGet state
   when realyOpen $ do
-    fp <- fileOpenDialog f True True "Select a file to open ..." [("Text file",["*.txt"])] (dropFileName filePath) (takeFileName filePath)
+    fp <- fileOpenDialog f True True (r SelectFileToOpen) [("Text file",["*.txt"])] (dropFileName filePath) (takeFileName filePath)
     case fp of
       Nothing -> return ()
       Just newFp -> do

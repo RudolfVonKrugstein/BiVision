@@ -12,6 +12,10 @@ data Message = File
              | EndOfDocument
              | Buffer
              | MainArea
+             | UnsavedChanges
+             | WantToSaveUnsavedChanges
+             | SelectFileForSave
+             | SelectFileToOpen
 
 render_en_US :: Message -> String
 render_en_US m = case m of
@@ -25,6 +29,10 @@ render_en_US m = case m of
   EndOfDocument    -> "&End of document\tCtrl+E"
   Buffer           -> "&Buffer\tCtrl+B"
   MainArea         -> "&Main Area\tCtrl+M"
+  UnsavedChanges   -> "Unsaved changes ..."
+  WantToSaveUnsavedChanges -> "You have unsaved changes, do you want to save them?"
+  SelectFileForSave-> "Select a file to save ..."
+  SelectFileToOpen -> "Select a file to open ..."
 
 render_de_DE :: Message -> String
 render_de_DE m = case m of
@@ -38,6 +46,10 @@ render_de_DE m = case m of
   EndOfDocument    -> "&Ende des Dokuments\tCtrl+E"
   Buffer           -> "&Buffer\tCtrl+B"
   MainArea         -> "&Hauptfeld\tCtrl+M"
+  UnsavedChanges   -> "Ungespeicherte Änderungen ..."
+  WantToSaveUnsavedChanges -> "Es gibt ungespeicherte Änderungen, wollen Sie diese jetzt speichern?"
+  SelectFileForSave-> "Datei speichern"
+  SelectFileToOpen -> "Datei öffnen"
 
 type Lang = String
 
