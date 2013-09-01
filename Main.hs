@@ -13,11 +13,13 @@ main = start mainFrame
 
 data ProgramState = ProgramState { unsavedChanges :: Bool
                                    , fileName     :: FilePath
+                                   , undoHistory  :: [String]
+                                   , redoHistory  :: [String]
                                    }
 
 mainFrame = do
   -- state of the programm
-  state <- varCreate $ ProgramState False ""
+  state <- varCreate $ ProgramState False "" [] []
 
   -- file menu
   file   <- menuPane      [ text := "&File"]
@@ -131,8 +133,8 @@ updateFrameTitle state f = do
 
 dealWithUnsavedChanges :: Var ProgramState -> Frame a -> TextCtrl a -> IO Bool
 dealWithUnsavedChanges state f tc = do
-  ProgramState unsavedChanges _ <- varGet state
-  if not unsavedChanges then return True else do
+  uc <- unsavedChanges <$> varGet state
+  if not uc then return True else do
     res <- messageDialog f "Unsaved changes ..." "You have unsaved changes, do you want to save them?" (wxYES_NO .+. wxCANCEL .+. wxICON_EXCLAMATION)
     case res of
       _ | res == wxID_CANCEL -> return False
@@ -140,7 +142,7 @@ dealWithUnsavedChanges state f tc = do
         | res == wxID_YES    -> do
           onSave state f tc
           -- check if saving worked
-          ProgramState newUnsavedChanges _ <- varGet state
+          newUnsavedChanges <- unsavedChanges <$> varGet state
           return (not newUnsavedChanges)
 
 
@@ -163,7 +165,7 @@ openFile tc f fp = do
 
 onSaveAs :: Var ProgramState -> Frame a -> TextCtrl a -> IO ()
 onSaveAs state f tc = do
-  ProgramState _ filePath <- varGet state
+  filePath <- fileName <$> varGet state
   fp <- fileSaveDialog f True True "Select a file to save into ..." [("Text file",["*.txt"])] (dropFileName filePath) (takeFileName filePath)
   case fp of
     Nothing -> return ()
@@ -173,7 +175,7 @@ onSaveAs state f tc = do
 
 onSave :: Var ProgramState -> Frame a -> TextCtrl a -> IO ()
 onSave state f tc = do
-  ProgramState _ fp <- varGet state
+  fp <- fileName <$> varGet state
   if null fp then onSaveAs state f tc
   else do
     catch (do
@@ -185,7 +187,7 @@ onSave state f tc = do
 onOpen :: Var ProgramState -> Frame a -> TextCtrl a -> IO ()
 onOpen state f tc = do
   realyOpen <- dealWithUnsavedChanges state f tc
-  ProgramState _ filePath <- varGet state
+  filePath <- fileName <$> varGet state
   when realyOpen $ do
     fp <- fileOpenDialog f True True "Select a file to open ..." [("Text file",["*.txt"])] (dropFileName filePath) (takeFileName filePath)
     case fp of
