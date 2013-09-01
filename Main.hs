@@ -22,6 +22,27 @@ data ProgramState = ProgramState { unsavedChanges :: Bool
                                    , redoHistory  :: [String]
                                    }
 
+addUndo :: String -> Var ProgramState -> IO ()
+addUndo undo state = do
+  varUpdate state (\s -> s {undoHistory = undo:(undoHistory s), redoHistory = []})
+  return ()
+
+doUndo :: Var ProgramState -> IO (Maybe String)
+doUndo state = do
+  uHist <- undoHistory <$> varGet state
+  if null uHist then return Nothing
+  else do
+    varUpdate state (\s -> s {undoHistory = tail uHist, redoHistory = (head uHist):(redoHistory s)})
+    return $ Just (head uHist)
+
+doRedo :: Var ProgramState -> IO (Maybe String)
+doRedo state = do
+  rHist <- redoHistory <$> varGet state
+  if null rHist then return Nothing
+  else do
+    varUpdate state (\s -> s {undoHistory = (head rHist):(undoHistory s), redoHistory = tail rHist})
+    return $ Just (head rHist)
+
 mainFrame = do
   -- state of the programm
   state <- varCreate $ ProgramState False "" [] []
