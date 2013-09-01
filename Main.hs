@@ -7,6 +7,7 @@ import Debug.Trace
 import Data.String.Utils
 import System.FilePath
 import Control.Exception
+import Data.Functor
 
 main = start mainFrame
 
@@ -35,8 +36,8 @@ mainFrame = do
   f        <- frame [text    := "BiVision"
                     ,menuBar := [file,goto]]
   buffer   <- textEntry f []
-  mainArea <- textCtrl  f [ font := fontFixed]
-  controlOnText mainArea (onTextUpdate state mainArea)
+  mainArea <- textCtrl  f [ font := fontFixed, wrap := WrapNone]
+  controlOnText mainArea (onTextUpdate state f mainArea)
   set f [layout := minsize (sz 300 200) $ column 2 [hfill $ widget buffer, fill $ widget mainArea]]
 
   -- set callbacks
@@ -49,8 +50,8 @@ mainFrame = do
         ,on (menu goBack)       := onGoBack mainArea
         ,on (menu goToEnd)      := onGoToEnd mainArea]
 
-onTextUpdate :: Var ProgramState -> TextCtrl a -> IO ()
-onTextUpdate state tc = do
+onTextUpdate :: Var ProgramState -> Frame a -> TextCtrl a -> IO ()
+onTextUpdate state f tc = do
   -- obtain cursor coordinates
   coord <- textCtrlGetXYInsertionPoint tc
 
@@ -63,7 +64,7 @@ onTextUpdate state tc = do
 
   -- set state to changed
   varUpdate state $ \s -> (s {unsavedChanges = True})
-  return ()
+  updateFrameTitle state f
 
 -- Ensure that the text is correctly formated for the buffer
 -- 1. All lines have exactly 40 characters. To many characters are removed, missing characters are filled with spaces
@@ -122,6 +123,12 @@ onGoToEnd tc = updateTextBufferPosition findLastSymbolPosition tc
         newX = lastNonSpaceCharPos (ls !! newY)
     in (newX,newY)
 
+updateFrameTitle :: Var ProgramState -> Frame a -> IO ()
+updateFrameTitle state f = do
+  fn <- takeFileName . fileName <$> varGet state
+  uc <- unsavedChanges <$> varGet state
+  set f [text := (if uc then "*" else "") ++ fn ++ " (BiVision)"]
+
 dealWithUnsavedChanges :: Var ProgramState -> Frame a -> TextCtrl a -> IO Bool
 dealWithUnsavedChanges state f tc = do
   ProgramState unsavedChanges _ <- varGet state
@@ -148,13 +155,11 @@ saveFile :: TextCtrl a -> Frame a -> FilePath -> IO ()
 saveFile tc f fp = do
   txt <- get tc text
   writeFile fp (unlines . reverse . dropWhile null . reverse . map rstrip . lines $ txt) 
-  set f [text := (takeFileName fp)]
 
 openFile :: TextCtrl a -> Frame a -> FilePath -> IO ()
 openFile tc f fp = do
   txt <- readFile fp
   set tc [text := txt]
-  set f [text := (takeFileName fp)]
 
 onSaveAs :: Var ProgramState -> Frame a -> TextCtrl a -> IO ()
 onSaveAs state f tc = do
@@ -174,7 +179,7 @@ onSave state f tc = do
     catch (do
              saveFile tc f fp
              varUpdate state (\s -> s {unsavedChanges = False})
-             return ()
+             updateFrameTitle state f
            ) ((\_ -> errorDialog f "Error on writing" ("There was an error writing " ++ fp)) :: SomeException -> IO ())
   
 onOpen :: Var ProgramState -> Frame a -> TextCtrl a -> IO ()
@@ -188,7 +193,7 @@ onOpen state f tc = do
       Just newFp -> do
         catch (do
                  openFile tc f newFp
-                 onTextUpdate state tc
+                 onTextUpdate state f tc
                  varUpdate state (\s -> s {fileName = newFp, unsavedChanges = False})
-                 return ()
+                 updateFrameTitle state f
               ) $ ((\_ -> errorDialog f "Error on reading" ("There was an error reading " ++ newFp)) :: SomeException -> IO ()) 
