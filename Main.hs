@@ -2,12 +2,17 @@ import Graphics.UI.WX
 import Graphics.UI.WX.Controls
 import Graphics.UI.WXCore
 import Graphics.UI.WXCore.Events
-import TechnicalUtils
 import Debug.Trace
 import Data.String.Utils
 import System.FilePath
 import Control.Exception
 import Data.Functor
+
+import TechnicalUtils
+import Messages
+
+-- render for international messages
+r = render ["de_DE"]
 
 main = start mainFrame
 
@@ -22,17 +27,17 @@ mainFrame = do
   state <- varCreate $ ProgramState False "" [] []
 
   -- file menu
-  file   <- menuPane      [ text := "&File"]
-  open   <- menuItem file [ text := "&Open\tCtrl+O"]
-  save   <- menuItem file [ text := "&Save\tCtrl+S"]
-  saveAs <- menuItem file [ text := "&Save &as"]
-  quit   <- menuItem file [ text := "&Quit\tCtrl+Q"]
+  file   <- menuPane      [ text := r File]
+  open   <- menuItem file [ text := r Open]
+  save   <- menuItem file [ text := r Save]
+  saveAs <- menuItem file [ text := r SaveAs]
+  quit   <- menuItem file [ text := r Quit]
   -- goto menu
-  goto    <- menuPane     [ text := "&GoTo"]
-  goBack  <- menuItem     goto [ text := "End of recent line with \"&=\"\tCtrl+1"]
-  goToEnd <- menuItem     goto [ text := "&End of document\tCtrl+E"]
-  goToBuffer <-  menuItem goto [ text := "&Buffer\tCtrl+B"]
-  goToMainArea <-menuItem goto [ text := "&Main Area\tCtrl+M"]
+  goto    <- menuPane     [ text := r GoTo]
+  goBack  <- menuItem     goto [ text := r EndOfRecentLine]
+  goToEnd <- menuItem     goto [ text := r EndOfDocument]
+  goToBuffer <-  menuItem goto [ text := r Buffer]
+  goToMainArea <-menuItem goto [ text := r MainArea]
 
   -- main frame
   f        <- frame [text    := "BiVision"
