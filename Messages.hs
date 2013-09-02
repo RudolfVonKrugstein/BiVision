@@ -8,6 +8,9 @@ data Message = File
              | SaveAs
              | Quit
              | GoTo
+             | Edit
+             | Undo
+             | Redo
              | EndOfRecentLine
              | EndOfDocument
              | Buffer
@@ -25,6 +28,9 @@ render_en_US m = case m of
   SaveAs           -> "Save &as"
   Quit             -> "&Quit\tCtrl+Q"
   GoTo             -> "&Go to"
+  Edit             -> "&Edit"
+  Undo             -> "&UnDo\tCtrl+Z"
+  Redo             -> "&ReDo\tCtrl+Shift+Z"
   EndOfRecentLine  -> "End of recent line with \"&=\"\tCtrl+1"
   EndOfDocument    -> "&End of document\tCtrl+E"
   Buffer           -> "&Buffer\tCtrl+B"
@@ -42,6 +48,9 @@ render_de_DE m = case m of
   SaveAs           -> "Speichern &als"
   Quit             -> "&Beenden\tCtrl+Q"
   GoTo             -> "&Gehe zu"
+  Edit             -> "&Edtieren"
+  Undo             -> "&UnDo\tCtrl+Z"
+  Redo             -> "&ReDo\tCtrl+Shift+Z"
   EndOfRecentLine  -> "Ende der letzten Zeile mit \"&=\"\tCtrl+1"
   EndOfDocument    -> "&Ende des Dokuments\tCtrl+E"
   Buffer           -> "&Buffer\tCtrl+B"

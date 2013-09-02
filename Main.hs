@@ -14,17 +14,33 @@ import Messages
 -- render for international messages
 r = render ["de_DE"]
 
-main = start mainFrame
+main = start createMainFrame
 
 data ProgramState = ProgramState { unsavedChanges :: Bool
                                    , fileName     :: FilePath
                                    , undoHistory  :: [String]
                                    , redoHistory  :: [String]
+                                   -- often needed elements
+                                   , mainFrame    :: Frame ()
+                                   , mainArea     :: TextCtrl ()
+                                   , undoItem     :: MenuItem ()
+                                   , redoItem     :: MenuItem ()
                                    }
+
+enableUndo :: Bool -> Var ProgramState -> IO ()
+enableUndo enable state = do
+  uItem <- undoItem <$> varGet state
+  set uItem [ enabled := enable]
+
+enableRedo :: Bool -> Var ProgramState -> IO ()
+enableRedo enable state = do
+  rItem <- redoItem <$> varGet state
+  set rItem [ enabled := enable]
 
 addUndo :: String -> Var ProgramState -> IO ()
 addUndo undo state = do
   varUpdate state (\s -> s {undoHistory = undo:(undoHistory s), redoHistory = []})
+  enableUndo True state
   return ()
 
 doUndo :: Var ProgramState -> IO (Maybe String)
@@ -33,6 +49,8 @@ doUndo state = do
   if null uHist then return Nothing
   else do
     varUpdate state (\s -> s {undoHistory = tail uHist, redoHistory = (head uHist):(redoHistory s)})
+    enableRedo True state
+    enableUndo (not . null . tail $ uHist) state
     return $ Just (head uHist)
 
 doRedo :: Var ProgramState -> IO (Maybe String)
@@ -41,18 +59,21 @@ doRedo state = do
   if null rHist then return Nothing
   else do
     varUpdate state (\s -> s {undoHistory = (head rHist):(undoHistory s), redoHistory = tail rHist})
+    enableUndo True state
+    enableRedo (not . null . tail $ rHist) state
     return $ Just (head rHist)
 
-mainFrame = do
-  -- state of the programm
-  state <- varCreate $ ProgramState False "" [] []
-
+createMainFrame = do
   -- file menu
   file   <- menuPane      [ text := r File]
   open   <- menuItem file [ text := r Open]
   save   <- menuItem file [ text := r Save]
   saveAs <- menuItem file [ text := r SaveAs]
   quit   <- menuItem file [ text := r Quit]
+  -- edit menu
+  edit  <- menuPane [ text := r Edit]
+  undo  <- menuItem edit [ text := r Undo, enabled := False]
+  redo  <- menuItem edit [ text := r Redo, enabled := False]
   -- goto menu
   goto    <- menuPane     [ text := r GoTo]
   goBack  <- menuItem     goto [ text := r EndOfRecentLine]
@@ -62,25 +83,31 @@ mainFrame = do
 
   -- main frame
   f        <- frame [text    := "BiVision"
-                    ,menuBar := [file,goto]]
+                    ,menuBar := [file,edit,goto]]
   buffer   <- textEntry f []
   mainArea <- textCtrl  f [ font := fontFixed, wrap := WrapNone]
-  controlOnText mainArea (onTextUpdate state f mainArea)
   set f [layout := minsize (sz 300 200) $ column 2 [hfill $ widget buffer, fill $ widget mainArea]]
 
+  -- state of the programm
+  state <- varCreate $ ProgramState False "" [] [] f mainArea undo redo
+
   -- set callbacks
-  set f [on (menu quit)         := onQuit state f mainArea
-        ,on (menu open)         := onOpen state f mainArea
-        ,on (menu save)         := onSave state f mainArea
-        ,on (menu saveAs)       := onSaveAs state f mainArea
+  controlOnText mainArea (onTextUpdate state)
+  set f [on (menu quit)         := onQuit state
+        ,on (menu open)         := onOpen state
+        ,on (menu save)         := onSave state
+        ,on (menu saveAs)       := onSaveAs state
+        ,on (menu undo)         := onUndo state
+        ,on (menu redo)         := onRedo state
         ,on (menu goToBuffer)   := focusOn buffer
         ,on (menu goToMainArea) := focusOn mainArea
         ,on (menu goBack)       := onGoBack mainArea
         ,on (menu goToEnd)      := onGoToEnd mainArea]
 
-onTextUpdate :: Var ProgramState -> Frame a -> TextCtrl a -> IO ()
-onTextUpdate state f tc = do
+onTextUpdate :: Var ProgramState -> IO ()
+onTextUpdate state = do
   -- obtain cursor coordinates
+  tc    <- mainArea <$> varGet state
   coord <- textCtrlGetXYInsertionPoint tc
 
   -- update text
@@ -92,7 +119,7 @@ onTextUpdate state f tc = do
 
   -- set state to changed
   varUpdate state $ \s -> (s {unsavedChanges = True})
-  updateFrameTitle state f
+  updateFrameTitle state
 
 -- Ensure that the text is correctly formated for the buffer
 -- 1. All lines have exactly 40 characters. To many characters are removed, missing characters are filled with spaces
@@ -125,6 +152,13 @@ updateTextBufferPosition f tc = do
 lastNonSpaceCharPos :: String -> Int
 lastNonSpaceCharPos = length . dropWhile (==' ') . reverse 
 
+-- undo and redo
+onUndo :: Var ProgramState -> IO ()
+onUndo state = undefined
+
+onRedo :: Var ProgramState -> IO ()
+onRedo state = undefined
+
 -- goto moste recent line with = in it
 onGoBack :: TextCtrl a -> IO ()
 onGoBack tc = updateTextBufferPosition findRecentLineWithEqualSign tc
@@ -151,30 +185,33 @@ onGoToEnd tc = updateTextBufferPosition findLastSymbolPosition tc
         newX = lastNonSpaceCharPos (ls !! newY)
     in (newX,newY)
 
-updateFrameTitle :: Var ProgramState -> Frame a -> IO ()
-updateFrameTitle state f = do
+updateFrameTitle :: Var ProgramState -> IO ()
+updateFrameTitle state = do
   fn <- takeFileName . fileName <$> varGet state
   uc <- unsavedChanges <$> varGet state
+  f  <- mainFrame <$> varGet state
   set f [text := (if uc then "*" else "") ++ fn ++ " (BiVision)"]
 
-dealWithUnsavedChanges :: Var ProgramState -> Frame a -> TextCtrl a -> IO Bool
-dealWithUnsavedChanges state f tc = do
+dealWithUnsavedChanges :: Var ProgramState -> IO Bool
+dealWithUnsavedChanges state = do
   uc <- unsavedChanges <$> varGet state
   if not uc then return True else do
+    f <- mainFrame <$> varGet state
     res <- messageDialog f (r UnsavedChanges) (r WantToSaveUnsavedChanges) (wxYES_NO .+. wxCANCEL .+. wxICON_EXCLAMATION)
     case res of
       _ | res == wxID_CANCEL -> return False
         | res == wxID_NO     -> return True
         | res == wxID_YES    -> do
-          onSave state f tc
+          onSave state
           -- check if saving worked
           newUnsavedChanges <- unsavedChanges <$> varGet state
           return (not newUnsavedChanges)
 
 
-onQuit :: Var ProgramState -> Frame a -> TextCtrl a -> IO ()
-onQuit state f tc = do
-    realyQuit <- dealWithUnsavedChanges state f tc
+onQuit :: Var ProgramState -> IO ()
+onQuit state = do
+    realyQuit <- dealWithUnsavedChanges state
+    f <- mainFrame <$> varGet state
     when realyQuit (close f)
   
 
@@ -189,39 +226,44 @@ openFile tc f fp = do
   txt <- readFile fp
   set tc [text := txt]
 
-onSaveAs :: Var ProgramState -> Frame a -> TextCtrl a -> IO ()
-onSaveAs state f tc = do
+onSaveAs :: Var ProgramState -> IO ()
+onSaveAs state = do
   filePath <- fileName <$> varGet state
+  f <- mainFrame <$> varGet state
   fp <- fileSaveDialog f True True (r SelectFileForSave) [("Text file",["*.txt"])] (dropFileName filePath) (takeFileName filePath)
   case fp of
     Nothing -> return ()
     Just newFp -> do
       varUpdate state (\s -> s {fileName = newFp, unsavedChanges = False})
-      onSave state f tc
+      onSave state
 
-onSave :: Var ProgramState -> Frame a -> TextCtrl a -> IO ()
-onSave state f tc = do
+onSave :: Var ProgramState -> IO ()
+onSave state = do
   fp <- fileName <$> varGet state
-  if null fp then onSaveAs state f tc
+  f <- mainFrame <$> varGet state
+  if null fp then onSaveAs state
   else do
     catch (do
+             tc <- mainArea <$> varGet state
              saveFile tc f fp
              varUpdate state (\s -> s {unsavedChanges = False})
-             updateFrameTitle state f
+             updateFrameTitle state
            ) ((\_ -> errorDialog f "Error on writing" ("There was an error writing " ++ fp)) :: SomeException -> IO ())
   
-onOpen :: Var ProgramState -> Frame a -> TextCtrl a -> IO ()
-onOpen state f tc = do
-  realyOpen <- dealWithUnsavedChanges state f tc
+onOpen :: Var ProgramState -> IO ()
+onOpen state = do
+  realyOpen <- dealWithUnsavedChanges state
   filePath <- fileName <$> varGet state
   when realyOpen $ do
+    f <- mainFrame <$> varGet state
     fp <- fileOpenDialog f True True (r SelectFileToOpen) [("Text file",["*.txt"])] (dropFileName filePath) (takeFileName filePath)
     case fp of
       Nothing -> return ()
       Just newFp -> do
         catch (do
+                 tc <- mainArea <$> varGet state
                  openFile tc f newFp
-                 onTextUpdate state f tc
+                 onTextUpdate state
                  varUpdate state (\s -> s {fileName = newFp, unsavedChanges = False})
-                 updateFrameTitle state f
+                 updateFrameTitle state
               ) $ ((\_ -> errorDialog f "Error on reading" ("There was an error reading " ++ newFp)) :: SomeException -> IO ()) 
