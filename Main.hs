@@ -117,8 +117,9 @@ onTextUpdate state = do
   -- set old cursor coordinates
   textCtrlSetXYInsertionPoint tc coord
 
-  -- set state to changed
-  varUpdate state $ \s -> (s {unsavedChanges = True})
+  -- set state to changed and add undo
+  varUpdate state $ \s -> (s {unsavedChanges = True, undoHistory = old:(undoHistory s)})
+  enableUndo True state
   updateFrameTitle state
 
 -- Ensure that the text is correctly formated for the buffer
@@ -264,6 +265,8 @@ onOpen state = do
                  tc <- mainArea <$> varGet state
                  openFile tc f newFp
                  onTextUpdate state
-                 varUpdate state (\s -> s {fileName = newFp, unsavedChanges = False})
+                 varUpdate state (\s -> s {fileName = newFp, unsavedChanges = False, undoHistory = [], redoHistory = []})
+                 enableUndo False state
+                 enableRedo False state
                  updateFrameTitle state
               ) $ ((\_ -> errorDialog f "Error on reading" ("There was an error reading " ++ newFp)) :: SomeException -> IO ()) 
