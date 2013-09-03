@@ -69,7 +69,7 @@ createMainFrame = do
   open   <- menuItem file [ text := r Open]
   save   <- menuItem file [ text := r Save]
   saveAs <- menuItem file [ text := r SaveAs]
-  quit   <- menuItem file [ text := r Quit]
+  quit   <- menuQuit file [ text := r Quit]
   -- edit menu
   edit  <- menuPane [ text := r Edit]
   undo  <- menuItem edit [ text := r Undo, enabled := False]
