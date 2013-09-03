@@ -9,6 +9,9 @@ data Message = File
              | Quit
              | GoTo
              | Edit
+             | Copy
+             | Cut
+             | Paste
              | Undo
              | Redo
              | EndOfRecentLine
@@ -29,6 +32,9 @@ render_en_US m = case m of
   Quit             -> "&Quit\tCtrl+Q"
   GoTo             -> "&Go to"
   Edit             -> "&Edit"
+  Copy             -> "&Copy\tCtrl+C"
+  Cut              -> "C&ut\tCtrl+X"
+  Paste            -> "&Paste\tCtrl+V"
   Undo             -> "&UnDo\tCtrl+Z"
   Redo             -> "&ReDo\tCtrl+Shift+Z"
   EndOfRecentLine  -> "End of recent line with \"&=\"\tCtrl+1"
@@ -49,6 +55,9 @@ render_de_DE m = case m of
   Quit             -> "&Beenden\tCtrl+Q"
   GoTo             -> "&Gehe zu"
   Edit             -> "&Edtieren"
+  Copy             -> "&Kopieren\tCtrl+C"
+  Cut              -> "&Auschneiden\tCtrl+X"
+  Paste            -> "&Einfügen\tCtrl+V"
   Undo             -> "&UnDo\tCtrl+Z"
   Redo             -> "&ReDo\tCtrl+Shift+Z"
   EndOfRecentLine  -> "Ende der letzten Zeile mit \"&=\"\tCtrl+1"

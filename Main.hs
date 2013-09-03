@@ -72,6 +72,9 @@ createMainFrame = do
   quit   <- menuQuit file [ text := r Quit]
   -- edit menu
   edit  <- menuPane [ text := r Edit]
+  copy  <- menuItemEx edit wxID_COPY  (r Copy)  wxITEM_NORMAL []
+  cut   <- menuItemEx edit wxID_CUT   (r Cut)   wxITEM_NORMAL []
+  paste <- menuItemEx edit wxID_PASTE (r Paste) wxITEM_NORMAL []
   undo  <- menuItem edit [ text := r Undo, enabled := False]
   redo  <- menuItem edit [ text := r Redo, enabled := False]
   -- goto menu
