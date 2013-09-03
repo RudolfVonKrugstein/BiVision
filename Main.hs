@@ -1,11 +1,12 @@
-import Graphics.UI.WX
+import Graphics.UI.WX hiding (when)
 import Graphics.UI.WX.Controls
-import Graphics.UI.WXCore
+import Graphics.UI.WXCore hiding (when)
 import Graphics.UI.WXCore.Events
 import Debug.Trace
 import Data.String.Utils
 import System.FilePath
 import Control.Exception
+import Control.Monad (unless,when)
 import Data.Functor
 
 import TechnicalUtils
@@ -20,12 +21,16 @@ data ProgramState = ProgramState { unsavedChanges :: Bool
                                    , fileName     :: FilePath
                                    , undoHistory  :: [String]
                                    , redoHistory  :: [String]
+                                   , curBuffer    :: String
                                    -- often needed elements
                                    , mainFrame    :: Frame ()
                                    , mainArea     :: TextCtrl ()
                                    , undoItem     :: MenuItem ()
                                    , redoItem     :: MenuItem ()
                                    }
+
+-- initial buffer state
+initialBuffer = unlines $ replicate 4 . replicate 40 $ ' '
 
 enableUndo :: Bool -> Var ProgramState -> IO ()
 enableUndo enable state = do
@@ -37,31 +42,11 @@ enableRedo enable state = do
   rItem <- redoItem <$> varGet state
   set rItem [ enabled := enable]
 
-addUndo :: String -> Var ProgramState -> IO ()
-addUndo undo state = do
-  varUpdate state (\s -> s {undoHistory = undo:(undoHistory s), redoHistory = []})
+addCurToUndo :: Var ProgramState -> IO ()
+addCurToUndo state = do
+  varUpdate state (\s -> s {undoHistory =(curBuffer s):(undoHistory s), redoHistory = []})
   enableUndo True state
   return ()
-
-doUndo :: Var ProgramState -> IO (Maybe String)
-doUndo state = do
-  uHist <- undoHistory <$> varGet state
-  if null uHist then return Nothing
-  else do
-    varUpdate state (\s -> s {undoHistory = tail uHist, redoHistory = (head uHist):(redoHistory s)})
-    enableRedo True state
-    enableUndo (not . null . tail $ uHist) state
-    return $ Just (head uHist)
-
-doRedo :: Var ProgramState -> IO (Maybe String)
-doRedo state = do
-  rHist <- redoHistory <$> varGet state
-  if null rHist then return Nothing
-  else do
-    varUpdate state (\s -> s {undoHistory = (head rHist):(undoHistory s), redoHistory = tail rHist})
-    enableUndo True state
-    enableRedo (not . null . tail $ rHist) state
-    return $ Just (head rHist)
 
 createMainFrame = do
   -- file menu
@@ -75,8 +60,8 @@ createMainFrame = do
   copy  <- menuItemEx edit wxID_COPY  (r Copy)  wxITEM_NORMAL []
   cut   <- menuItemEx edit wxID_CUT   (r Cut)   wxITEM_NORMAL []
   paste <- menuItemEx edit wxID_PASTE (r Paste) wxITEM_NORMAL []
-  undo  <- menuItem edit [ text := r Undo, enabled := False]
-  redo  <- menuItem edit [ text := r Redo, enabled := False]
+  undo  <- menuItemEx edit wxID_UNDO  (r Undo)  wxITEM_NORMAL [ enabled := False]
+  redo  <- menuItemEx edit wxID_REDO  (r Redo)  wxITEM_NORMAL [ enabled := False]
   -- goto menu
   goto    <- menuPane     [ text := r GoTo]
   goBack  <- menuItem     goto [ text := r EndOfRecentLine]
@@ -92,7 +77,7 @@ createMainFrame = do
   set f [layout := minsize (sz 300 200) $ column 2 [hfill $ widget buffer, fill $ widget mainArea]]
 
   -- state of the programm
-  state <- varCreate $ ProgramState False "" [] [] f mainArea undo redo
+  state <- varCreate $ ProgramState False "" [] [] initialBuffer f mainArea undo redo
 
   -- set callbacks
   controlOnText mainArea (onTextUpdate state)
@@ -107,6 +92,9 @@ createMainFrame = do
         ,on (menu goBack)       := onGoBack mainArea
         ,on (menu goToEnd)      := onGoToEnd mainArea]
 
+  -- set the initial buffer state
+  set mainArea [ text := initialBuffer ]
+
 onTextUpdate :: Var ProgramState -> IO ()
 onTextUpdate state = do
   -- obtain cursor coordinates
@@ -115,13 +103,15 @@ onTextUpdate state = do
 
   -- update text
   old <- get tc text
-  set tc [ text := formatForMainBuffer old ]
+  let new = formatForMainBuffer old
+  set tc [ text := new ]
 
   -- set old cursor coordinates
   textCtrlSetXYInsertionPoint tc coord
 
   -- set state to changed and add undo
-  varUpdate state $ \s -> (s {unsavedChanges = True, undoHistory = old:(undoHistory s)})
+  addCurToUndo state
+  varUpdate state $ \s -> (s {unsavedChanges = True, curBuffer = new})
   enableUndo True state
   updateFrameTitle state
 
@@ -158,10 +148,25 @@ lastNonSpaceCharPos = length . dropWhile (==' ') . reverse
 
 -- undo and redo
 onUndo :: Var ProgramState -> IO ()
-onUndo state = undefined
+onUndo state = do
+  uHist <- undoHistory <$> varGet state
+  unless  (null uHist) $ do
+    varUpdate state (\s -> s {undoHistory = tail uHist, curBuffer = (head uHist), redoHistory = (curBuffer s):(redoHistory s)})
+    enableRedo True state
+    enableUndo (not . null . tail $ uHist) state
+    tc <- mainArea <$> varGet state
+    set tc [text := head uHist]
+
 
 onRedo :: Var ProgramState -> IO ()
-onRedo state = undefined
+onRedo state = do
+  rHist <- redoHistory <$> varGet state
+  unless (null rHist) $ do
+    varUpdate state (\s -> s {undoHistory = (curBuffer s):(undoHistory s), curBuffer = (head rHist), redoHistory = tail rHist})
+    enableUndo True state
+    enableRedo (not . null . tail $ rHist) state
+    tc <- mainArea <$> varGet state
+    set tc [text := head rHist]
 
 -- goto moste recent line with = in it
 onGoBack :: TextCtrl a -> IO ()
@@ -225,10 +230,11 @@ saveFile tc f fp = do
   txt <- get tc text
   writeFile fp (unlines . reverse . dropWhile null . reverse . map rstrip . lines $ txt) 
 
-openFile :: TextCtrl a -> Frame a -> FilePath -> IO ()
+openFile :: TextCtrl a -> Frame a -> FilePath -> IO String
 openFile tc f fp = do
   txt <- readFile fp
   set tc [text := txt]
+  return txt
 
 onSaveAs :: Var ProgramState -> IO ()
 onSaveAs state = do
@@ -266,9 +272,9 @@ onOpen state = do
       Just newFp -> do
         catch (do
                  tc <- mainArea <$> varGet state
-                 openFile tc f newFp
+                 buf <- openFile tc f newFp
                  onTextUpdate state
-                 varUpdate state (\s -> s {fileName = newFp, unsavedChanges = False, undoHistory = [], redoHistory = []})
+                 varUpdate state (\s -> s {fileName = newFp, unsavedChanges = False, undoHistory = [], curBuffer = buf, redoHistory = []})
                  enableUndo False state
                  enableRedo False state
                  updateFrameTitle state
