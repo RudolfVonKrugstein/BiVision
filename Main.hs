@@ -14,7 +14,7 @@ import Messages
 import FrameWithProcessEvent
 
 -- render for international messages
-r = render ["de_DE"]
+r = render ["us_US"]
 
 main = start createMainFrame
 
