@@ -17,7 +17,7 @@ public:
     : wxFrame(parent, id, title, pos, size, style, name)
   {}
 
-  bool ProcessEvent(wxEvent& event) override
+  bool ProcessEvent(wxEvent& event)
   {
     if (event.IsCommandEvent() && !event.IsKindOf(CLASSINFO(wxChildFocusEvent)) && (event.GetId() != wxID_UNDO) && (event.GetId() != wxID_REDO))
     {
