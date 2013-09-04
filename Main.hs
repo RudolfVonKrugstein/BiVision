@@ -52,9 +52,9 @@ addCurToUndo state = do
 createMainFrame = do
   -- file menu
   file   <- menuPane      [ text := r File]
-  open   <- menuItem file [ text := r Open]
-  save   <- menuItem file [ text := r Save]
-  saveAs <- menuItem file [ text := r SaveAs]
+  open   <- menuItemEx file wxID_OPEN   (r Open)   wxITEM_NORMAL []
+  save   <- menuItemEx file wxID_SAVE   (r Save)   wxITEM_NORMAL []
+  saveAs <- menuItemEx file wxID_SAVEAS (r SaveAs) wxITEM_NORMAL []
   quit   <- menuQuit file [ text := r Quit]
   -- edit menu
   edit  <- menuPane [ text := r Edit]
