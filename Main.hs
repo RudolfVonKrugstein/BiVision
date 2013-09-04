@@ -11,6 +11,7 @@ import Data.Functor
 
 import TechnicalUtils
 import Messages
+import FrameWithProcessEvent
 
 -- render for international messages
 r = render ["de_DE"]
@@ -70,7 +71,7 @@ createMainFrame = do
   goToMainArea <-menuItem goto [ text := r MainArea]
 
   -- main frame
-  f        <- frame [text    := "BiVision"
+  f        <- frameWithProcessEvent [text    := "BiVision"
                     ,menuBar := [file,edit,goto]]
   buffer   <- textEntry f []
   mainArea <- textCtrl  f [ font := fontFixed, wrap := WrapNone]
