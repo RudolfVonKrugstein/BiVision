@@ -19,7 +19,7 @@ public:
 
   bool ProcessEvent(wxEvent& event) override
   {
-    if (event.IsCommandEvent() && !event.IsKindOf(CLASSINFO(wxChildFocusEvent)))
+    if (event.IsCommandEvent() && !event.IsKindOf(CLASSINFO(wxChildFocusEvent)) && (event.GetId() != wxID_UNDO) && (event.GetId() != wxID_REDO))
     {
       // Problem: we can get infinite recursion because the events
       // climb back up to this frame, and repeat.
