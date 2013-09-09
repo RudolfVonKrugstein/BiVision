@@ -1,5 +1,5 @@
 all: frameWithProcessEventC.o Main.hs TechnicalUtils.hs FrameWithProcessEvent.hs Messages.hs
-	ghc.exe -optl-s -O2 Main.hs frameWithProcessEventC.o -lstdc++
+	ghc.exe -optl-s -optl-mwindows -O2 Main.hs frameWithProcessEventC.o -lstdc++
 
 frameWithProcessEventC.o: frameWithProcessEvent.cpp frameWithProcessEvent.h
 	gcc.exe -c -O2 frameWithProcessEvent.cpp `wx-config.exe --cflags` -o frameWithProcessEventC.o
