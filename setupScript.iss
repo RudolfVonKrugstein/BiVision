@@ -54,6 +54,7 @@ Source: "C:\BiVision\wxmsw295u_richtext_gcc_custom.dll"; DestDir: "{app}"; Flags
 Source: "C:\BiVision\wxmsw295u_stc_gcc_custom.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "C:\BiVision\wxmsw295u_webview_gcc_custom.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "C:\BiVision\wxmsw295u_xrc_gcc_custom.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\BiVision\libstdc++-6.dll"; DestDir: "{app}"; Flags: ignoreversion
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
